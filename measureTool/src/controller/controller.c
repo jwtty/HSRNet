@@ -26,7 +26,10 @@ static void do_terminate(int connfd)
     int pid;
     char ret;
 
-    pid = peekPID(SMEM_SERVERPID);
+    if ((ret = rPeekPID(SMEM_SERVERPID, "server", &pid)) != RET_SUCC)
+    {
+        goto do_terminate_out;
+    }
 
     init_lock(&sigusr1);
     if ((ret = rKill(pid, "server", SIGUSR1)) != RET_SUCC)
@@ -54,7 +57,10 @@ static void do_configure(int connfd)
     char ret;
     char message[1024];
 
-    pid = peekPID(SMEM_SERVERPID);
+    if ((ret = rPeekPID(SMEM_SERVERPID, "server", &pid)) != RET_SUCC)
+    {
+        goto do_configure_out;
+    }
 
     if ((ret = rReceiveMessage(connfd, "client", message)) != RET_SUCC)
     {
@@ -83,7 +89,7 @@ do_configure_out:
     if (ret == RET_EMSG)
     {
         logError("%s", message);
-        rSendMessage(connfd, "client", message);
+        rSendMessage(connfd, "client", message, strlen(message) + 1);
     }
     if (ret == RET_SUCC)
     {
@@ -161,7 +167,7 @@ int main(int argc, char **argv)
         }
 
         haddrp = inet_ntoa(clientaddr.sin_addr);
-        logMessage("Connected to %s\n", haddrp);
+        logMessage("Connected to %s", haddrp);
 
         parse(connfd);
         if (close(connfd) < 0)

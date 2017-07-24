@@ -14,18 +14,22 @@ static int running = 0;
 
 void sigHandler1(int sig)
 {
-    sigusr1 = 1;
     sigprocmask(SIG_BLOCK, &mask, &backup);
+    sigusr1 = 1;
+    logMessage("Trying to terminate running job.");
 
     if (running == 0)
     {
         int pid;
 
         logMessage("No test running, bypass.");
-        pid = peekPID(SMEM_CONTROLLERPID);
-        rKill(pid, "controller", SIGUSR1);
+        if (rPeekPID(SMEM_CONTROLLERPID, "controller", &pid) == RET_SUCC)
+        {
+            rKill(pid, "controller", SIGUSR1);
+        }
     }
 
+    logMessage("Terminate complete.");
     sigprocmask(SIG_SETMASK, &backup, NULL);
 }
 
@@ -44,7 +48,10 @@ void sigHandler2(int sig)
         goto sighandler2_fail_out;
     }
 
-    pid = peekPID(SMEM_CONTROLLERPID);
+    if (rPeekPID(SMEM_CONTROLLERPID, "controller", &pid) != RET_SUCC)
+    {
+        goto sighandler2_final;
+    }
 
     sscanf(message, "%d%d%d", &ttype, &targ, &targ2);
     switch (ttype)
@@ -86,7 +93,7 @@ void sigHandler3(int sig)
 void doLongTest(int connfd)
 {
     struct timeval st, ed;
-    int sum = 0;
+    long sum = 0;
     double elapsed;
 
     init_lock(&sigalrm);
@@ -111,8 +118,11 @@ void doLongTest(int connfd)
                 int pid;
                 logMessage("Long test terminated.");
 
-                pid = peekPID(SMEM_CONTROLLERPID);
-                rKill(pid, "controller", SIGUSR1);
+                if (rPeekPID(SMEM_CONTROLLERPID, "controller", &pid) 
+                    == RET_SUCC)
+                {
+                    rKill(pid, "controller", SIGUSR1);
+                }
             }
             else if (!sigalrm)
             {
@@ -130,7 +140,7 @@ void doLongTest(int connfd)
 
     alarm(0);
     logMessage("Long test summary:");
-    logMessage("  Bytes transferred: %d", sum);
+    logMessage("  Bytes transferred: %ld", sum);
     logMessage("  Time elapsed : %lfs", elapsed);
 }
 
@@ -166,8 +176,11 @@ void doFixTest(int connfd)
                 int pid;
                 logMessage("Long test terminated.");
 
-                pid = peekPID(SMEM_CONTROLLERPID);
-                rKill(pid, "controller", SIGUSR1);
+                if (rPeekPID(SMEM_CONTROLLERPID, "controller", &pid) 
+                    == RET_SUCC)
+                {
+                    rKill(pid, "controller", SIGUSR1);
+                }
             }
             else if (!sigalrm)
             {
@@ -220,6 +233,10 @@ int main(int argc, char **argv)
     }
     
     sigfillset(&mask);
+    
+    initSharedMem(SMEM_MESSAGE);
+    initSharedMem(SMEM_CONTROLLERPID);
+    initSharedMem(SMEM_SERVERPID);
     notifyPID(SMEM_SERVERPID, getpid());
 
     port = atoi(argv[1]);

@@ -10,4 +10,5 @@ init:
 .PHONY: clean
 clean:
 	-rm bin/* -r
+	-rm temp/* -r
 	make -C src clean

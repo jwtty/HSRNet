@@ -6,6 +6,7 @@
 
 #define PACKET_LEN 131072
 
+#define SHARED_BLOCK_LEN 4096
 #define SMEM_SERVERPID 0
 #define SMEM_CONTROLLERPID 1
 #define SMEM_MESSAGE 2
@@ -18,6 +19,7 @@
 #define RET_EKILL 2
 #define RET_EREAD 3
 #define RET_EWRITE 4
+#define RET_EPID 5
 
 #define TYPE_LONG 0
 #define TYPE_FIX 1
@@ -41,10 +43,12 @@ static inline void init_lock(lock_t *plock)
 }
 static inline void spin(lock_t *plock)
 {
+    logVerbose("Waiting for spin lock...");
     while (*plock == 0);
 }
 static inline void spinOR(lock_t *plock1, lock_t *plock2)
 {
+    logVerbose("Waiting for spin lock...");
     while (*plock1 == 0 && *plock2 == 0);
 }
 
@@ -62,6 +66,18 @@ static inline int rio_readn_force(int connfd, char *buf, int len)
     return ret;
 }
 
+static inline char rPeekPID(int index, const char *name, int *dest)
+{
+    int pid = peekPID(index);
+    if (pid == 0)
+    {
+        logError("Can't get PID of %s!", name);
+        return RET_EPID;
+    }
+    *dest = pid;
+    return RET_SUCC;
+}
+
 static inline char rKill(int pid, const char *name, int sig)
 {
     if (kill(pid, sig) < 0)
@@ -72,14 +88,18 @@ static inline char rKill(int pid, const char *name, int sig)
     return RET_SUCC;
 }
 
-static inline int rSendMessage(int connfd, const char *name ,char *message)
+static inline int rSendMessage(int connfd, const char *name,
+    char *message, int len)
 {
-    static const int len = sizeof(int);
-    if (rio_writen(connfd, message, len + strlen(message + len)) < 0)
+    static char buf[2048];
+    *(int*)buf = len;
+    memcpy(buf + sizeof(int), message, len);
+    if (rio_writen(connfd, buf, len + sizeof(int)) < 0)
     {
         logError("Can't send message to %s!(%s)", name, strerror(errno));
         return RET_EWRITE;
     }
+    logVerbose("Sent message with length=%d to %s", len, name);
     return RET_SUCC;
 }
 
@@ -97,6 +117,7 @@ static inline int rReceiveMessage(int connfd, const char *name, char *buf)
         logError("Can't receive message from %s!", name);
         return RET_EREAD;
     }
+    logVerbose("Received message with length=%d from %s", msglen, name);
     return RET_SUCC;
 }
 

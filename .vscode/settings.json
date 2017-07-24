@@ -13,6 +13,8 @@
         "errno.h": "c",
         "stdio.h": "c",
         "fcntl.h": "c",
-        "fcntl2.h": "c"
+        "fcntl2.h": "c",
+        "iperf.h": "c",
+        "tcp.h": "c"
     }
 }

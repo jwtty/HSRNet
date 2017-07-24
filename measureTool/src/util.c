@@ -2,24 +2,39 @@
 
 static char *smem[16];
 static int smem_fd[16];
+static char fbuf[SHARED_BLOCK_LEN];
 
 void initSharedMem(int index)
 {
+    struct stat stat;
     char buf[32];
     sprintf(buf, "temp/%d", index);
     smem_fd[index] = Open(buf, O_CREAT | O_RDWR, 0777);
-    smem[index] = Mmap(NULL, 4096, PROT_READ | PROT_WRITE, 
+    logVerbose("Opened %s as shared memory block #%d.", buf, index);
+    
+    fstat(smem_fd[index], &stat);
+    if (stat.st_size < SHARED_BLOCK_LEN)
+    {
+        logVerbose("File shorter than required, write to fill it.");
+        Write(smem_fd[index], fbuf, SHARED_BLOCK_LEN);
+    }
+    smem[index] = Mmap(NULL, SHARED_BLOCK_LEN, PROT_READ | PROT_WRITE, 
         MAP_SHARED, smem_fd[index], 0);
+    logVerbose("Shared memory block #%d(%lx) initialized.", index,
+        (unsigned long)smem[index]);
 }
 
 void notifyPID(int index, int pid)
 {
     *(int*)smem[index] = pid;
+    logVerbose("PID set to %d.", *(int*)smem[index]);
 }
 
 int peekPID(int index)
 {
-    return *(int*)smem[index];
+    int ret = *(int*)smem[index];
+    logVerbose("PID fetched, value is %d.", ret);
+    return ret;
 }
 
 void setMessage(int index, char *message)
@@ -62,6 +77,10 @@ char *retstr(char ret, char *buf)
     case RET_EWRITE:
         sprintf(buf, "Failed to write message(RET_EWRITE, %d)", 
             RET_EWRITE);
+        break;
+    case RET_EPID:
+        sprintf(buf, "Failed to get PID of server(RET_EPID, %d)", 
+            RET_EPID);
         break;
     default:
         sprintf(buf, "Value not defined(%d)", (int)ret);

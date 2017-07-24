@@ -30,16 +30,22 @@ static int timelen = -1;
 static int size = -1;
 static char *path = NULL;
 static int connfd = -1;
-static int byteReceived = 0;
+static long byteReceived = 0;
 static double timeElapsed = 0;
 static int mss = 0;
-static char recvBuf[65536];
+static char recvBuf[67108864];
 
-void parseArguments(int argc, char **argv)
+static void printUsageAndExit(char **argv)
+{
+    printf("Usage: %s [options]\n%s\n", argv[0], usage);
+    exit(1);
+}
+
+static void parseArguments(int argc, char **argv)
 {
     int os;
     char c;
-    while ((c = getopt(argc, argv, "B:c:p:t:n:l:")) != EOF)
+    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:")) != EOF)
     {
         switch (c)
         {
@@ -66,8 +72,7 @@ void parseArguments(int argc, char **argv)
             break;
         default:
             logWarning("Unexpected command-line option!");
-            printf("Usage: %s [options]\n%s", argv[0], usage);
-            exit(1);
+            printUsageAndExit(argv);
         }
     }
 
@@ -105,19 +110,19 @@ void parseArguments(int argc, char **argv)
     }
 }
 
-static inline void rRecvRetval(int connfd, char *ret)
+static inline void rRecvRetval(int connfd, const char *ope, char *ret)
 {
     static char text[256];
     if (rio_readn_force(connfd, ret, 1) < 1)
     {
-        logFatal("Can't receive reconfigure return value!");
+        logFatal("%s: Can't receive return value!", ope);
     }
     if (*ret != RET_SUCC)
     {
-        logFatal("Reconfigure failed(%s)!", retstr(*ret, text));
+        logFatal("%s failed(%s)!", ope, retstr(*ret, text));
     }
     
-    logMessage("Reconfigure complete.");
+    logMessage("%s complete.", ope);
 }
 
 static void reconfigureServer()
@@ -127,16 +132,40 @@ static void reconfigureServer()
     int arg = timelen;
     int arg2 = size;
     char ret;
+
+    // terminate any running job firstly.
+    if ((connfd = netdial(
+        AF_INET, SOCK_STREAM, localIP, 0, serverIP, cport)) < 0)
+    {
+        logFatal("Can't connect to controller!");
+    }
+    *message = SIG_TERM;
+    if (rio_writen(connfd, message, 1) < 0)
+    {
+        logFatal("Can't send instruction to controller!");
+    }
+    
+    rRecvRetval(connfd, "Terminate", &ret);
+    close(connfd);
+
+    // reconfigure now.
     if ((connfd = netdial(
         AF_INET, SOCK_STREAM, localIP, 0, serverIP, cport)) < 0)
     {
         logFatal("Can't connect to controller!");
     }
 
+    *message = SIG_CONF;
+    if (rio_writen(connfd, message, 1) < 0)
+    {
+        logFatal("Can't send instruction to controller!");
+    }
     sprintf(message, "%d %d %d", (int)type, arg, arg2);
-    rSendMessage(connfd, "controller", message);
+    logVerbose("Control message: %s", message);
+    rSendMessage(connfd, "controller", message, 1 + strlen(message));
 
-    rRecvRetval(connfd, &ret);
+    rRecvRetval(connfd, "Reconfigure", &ret);
+    close(connfd);
 }
 
 static void connectToServer()
@@ -193,16 +222,15 @@ static void doReceive()
 static void dumpResult()
 {
     logMessage("Test result:");
-    logMessage("  Total time: %lf", timeElapsed);
-    logMessage("  Bytes received: %d", byteReceived);
+    logMessage("  Total time: %lfs", timeElapsed);
+    logMessage("  Bytes received: %ld", byteReceived);
 }
 
 int main(int argc, char **argv)
 {
     if (argc == 1)
     {
-        printf("Usage: %s [options]\n%s", argv[0], usage);
-        exit(1);
+        printUsageAndExit(argv);
     }
 
     Signal(SIGPIPE, SIG_IGN);
