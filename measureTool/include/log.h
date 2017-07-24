@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 
-static int verbose;
+extern int verbose;
+void verboseOn();
+void verboseOff();
 
 #define logVerbose(...)\
 do\

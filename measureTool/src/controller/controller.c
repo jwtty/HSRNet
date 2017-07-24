@@ -73,10 +73,7 @@ static void do_configure(int connfd)
 
     if (sigusr2 != 0)
     {
-        if (getMessage(SMEM_MESSAGE, message) < 0)
-        {
-            logError("Shared memory for error message not initialized!");
-        }
+        getMessage(SMEM_MESSAGE, message);
         ret = RET_EMSG;
         goto do_configure_out;
     }
@@ -160,6 +157,7 @@ int main(int argc, char **argv)
         {
             logError("Unable to accept connection(%s)!", 
                 strerror(errno));
+            continue;
         }
 
         haddrp = inet_ntoa(clientaddr.sin_addr);

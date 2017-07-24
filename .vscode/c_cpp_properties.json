@@ -29,7 +29,8 @@
                 "/usr/include/x86_64-linux-gnu",
                 "/usr/lib/gcc/x86_64-linux-gnu/6/include/",
                 "${workspaceRoot}",
-                "${workspaceRoot}/include"
+                "${workspaceRoot}/include",
+                "${workspaceRoot}/measureTool/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

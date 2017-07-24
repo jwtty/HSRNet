@@ -1,0 +1,4 @@
+#!/bin/bash
+
+./bin/server 2000 > temp/server.log
+./bin/controller 2002 > temp/controller.log

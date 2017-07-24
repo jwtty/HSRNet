@@ -244,6 +244,7 @@ int main(int argc, char **argv)
         {
             logError("Unable to accept connection(%s)!", 
                 strerror(errno));
+            continue;
         }
 
         haddrp = inet_ntoa(clientaddr.sin_addr);

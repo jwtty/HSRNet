@@ -66,6 +66,8 @@ void parseArguments(int argc, char **argv)
             break;
         default:
             logWarning("Unexpected command-line option!");
+            printf("Usage: %s [options]\n%s", argv[0], usage);
+            exit(1);
         }
     }
 
@@ -200,7 +202,7 @@ int main(int argc, char **argv)
     if (argc == 1)
     {
         printf("Usage: %s [options]\n%s", argv[0], usage);
-        exit(0);
+        exit(1);
     }
 
     Signal(SIGPIPE, SIG_IGN);

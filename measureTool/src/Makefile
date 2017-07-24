@@ -3,7 +3,7 @@ CC := gcc
 MACRO :=
 CFLAGS := $(MACRO) -O0 -g -Wall -I ../include
 PROGS := controller server client
-OUT := csapp.o util.o
+OUT := csapp.o util.o log.o
 LIB := -lpthread
 
 .PHONY: all
@@ -17,6 +17,9 @@ server: $(OUT)
 
 controller: $(OUT)
 	$(CC) $(CFLAGS) -o $(TARGET)/controller controller/controller.c $(OUT) $(LIB)
+
+log.o:
+	$(CC) $(CFLAGS) -c log.c
 
 util.o:
 	$(CC) $(CFLAGS) -c util.c

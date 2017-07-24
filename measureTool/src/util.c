@@ -26,11 +26,6 @@ void setMessage(int index, char *message)
 {
     int len;
 
-    if (smem[index] == NULL)
-    {
-        initSharedMem(index);
-    }
-
     len = strlen(message) + 1;
     *(int*)smem[index] = len;
     memcpy(smem[index] + sizeof(int), message, len);
@@ -39,11 +34,6 @@ void setMessage(int index, char *message)
 int getMessage(int index, char *dest)
 {
     int len;
-
-    if (smem[index] == NULL)
-    {
-        return -1;
-    }
 
     len = *(int*)smem[index];
     memcpy(dest, smem[index] + sizeof(int), len);

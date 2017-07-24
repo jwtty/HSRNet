@@ -1,6 +1,11 @@
 .PHONY: all
-all: clean
+all: init clean
 	make -C src
+
+.PHONY: init
+init:
+	-mkdir bin
+	-mkdir temp
 
 .PHONY: clean
 clean:
