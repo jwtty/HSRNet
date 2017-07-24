@@ -16,11 +16,14 @@ static char usage[] =
     "    Specify port number of server.\n"
     "    *: Required\n"
     "  -P [cport]:\n"
-    "    Specify port number of controller(default port + 2).\n"
+    "    Specify port number of controller(default value is [port] + 2).\n"
     "  -t [time]:\n"
     "    Tell the program to do long test whose length is [time] seconds,\n"
     "    or set the timeout threshold of fix test if -n is specified.\n"
     "    *: Required\n"
+    "  -T [Time]:\n"
+    "    End test and exit after [Time] seconds, this value shouldn't be\n"
+    "    less than [time](default value is [value] + 10)."
     "  -v:\n"
     "    Print version information and exit.\n"
     "  -V:\n"
@@ -31,6 +34,7 @@ static char *serverIP = NULL;
 static unsigned short port = 0;
 static unsigned short cport = 0;
 static int timelen = -1;
+static int localTime = -1;
 static int size = -1;
 static char *path = NULL;
 static int connfd = -1;
@@ -38,6 +42,8 @@ static long byteReceived = 0;
 static double timeElapsed = 0;
 static int mss = 0;
 static char recvBuf[67108864];
+static lock_t sigint = 0;
+static lock_t sigalrm = 0;
 
 static void printUsageAndExit(char **argv)
 {
@@ -55,7 +61,7 @@ static void parseArguments(int argc, char **argv)
 {
     int os;
     char c;
-    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:vV")) != EOF)
+    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:vVT:")) != EOF)
     {
         switch (c)
         {
@@ -73,6 +79,9 @@ static void parseArguments(int argc, char **argv)
             break;
         case 't':
             timelen = atoi(optarg);
+            break;
+        case 'T':
+            localTime = atoi(optarg);
             break;
         case 'n':
             size = atoi(optarg);
@@ -95,6 +104,10 @@ static void parseArguments(int argc, char **argv)
     if (cport == 0)
     {
         cport = port + 2;
+    }
+    if (localTime < 0)
+    {
+        localTime = timelen + 10;
     }
 
     if (localIP == NULL)
@@ -149,6 +162,7 @@ static void reconfigureServer()
     int arg2 = size;
     char ret;
 
+    logVerbose("Trying to terminate early jobs...");
     // terminate any running job firstly.
     if ((connfd = netdial(
         AF_INET, SOCK_STREAM, localIP, 0, serverIP, cport)) < 0)
@@ -164,6 +178,7 @@ static void reconfigureServer()
     rRecvRetval(connfd, "Terminate", &ret);
     close(connfd);
 
+    logVerbose("Trying to reconfigure the server...");
     // reconfigure now.
     if ((connfd = netdial(
         AF_INET, SOCK_STREAM, localIP, 0, serverIP, cport)) < 0)
@@ -204,32 +219,47 @@ static void doReceive()
 {
     int ret;
     struct timeval st, ed;
+
+    alarm(localTime);
     gettimeofday(&st, NULL);
     do
     {
-        ret = rio_readn(connfd, recvBuf, PACKET_LEN);
-
-        if (ret < 0)
+        if ((ret = rio_readnr(connfd, recvBuf, PACKET_LEN)) < PACKET_LEN)
         {
-            gettimeofday(&ed, NULL);
-            if (errno == EPIPE || errno == ECONNRESET)
+            if (ret < 0)
             {
-                logWarning("Connection broken(%s).", strerror(errno));
+                if (errno == EPIPE || errno == ECONNRESET)
+                {
+                    logWarning("Connection broken(%s).", strerror(errno));
+                }
+                else 
+                {
+                    logError("Unexpected read error(%s)!", strerror(errno));
+                }
             }
-            else 
+            else
             {
-                logError("Unexpected read error(%s)!", strerror(errno));
+                if (sigint == 1)
+                {
+                    logMessage("Ctrl+C received, terminate.");
+                }
+                else if (sigalrm == 1)
+                {
+                    logMessage("Test timeout, terminate.");
+                }
+                else
+                {
+                    logError("Interrupted by unexpected signal!");
+                }
             }
             break;
         }
         byteReceived += ret;
     }
-    while (ret == PACKET_LEN);
+    while (!sigint && !sigalrm);
 
-    if (ret >= 0)
-    {
-        gettimeofday(&ed, NULL);
-    }
+    gettimeofday(&ed, NULL);
+
     timeElapsed = 
         (ed.tv_sec - st.tv_sec) + (ed.tv_usec - st.tv_usec) / 1000000.0;
     logMessage("Transfer complete.");
@@ -243,6 +273,17 @@ static void dumpResult()
     logMessage("  Bandwidth: %lfBytes/sec", byteReceived / timeElapsed);
 }
 
+void sigintHandler(int sig)
+{
+    sigint = 1;
+}
+
+void sigalrmHandler(int sig)
+{
+    sigalrm = 1;
+    alarm(1);
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 1)
@@ -251,6 +292,8 @@ int main(int argc, char **argv)
     }
 
     Signal(SIGPIPE, SIG_IGN);
+    Signal(SIGINT, sigintHandler);
+    Signal(SIGALRM, sigalrmHandler);
 
     parseArguments(argc, argv);
 

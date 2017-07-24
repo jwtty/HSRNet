@@ -37,7 +37,7 @@ void sigHandler2(int sig)
 {
     static char message[256];
     int targ, ttype, targ2;
-    int pid;
+    int pid = -1;
     sigprocmask(SIG_BLOCK, &mask, &backup);
     
     sigusr2 = 1;
@@ -105,15 +105,15 @@ void doLongTest(int connfd)
     while (!sigalrm)
     {
         int wrote = rio_writenr(connfd, packetBuf, PACKET_LEN);
-        if (wrote < 0)
+        if (wrote < PACKET_LEN)
         {
-            logError("Error uccured when sending packets(%s)!", 
-                strerror(errno));
-            break;
-        }
-        else if (wrote < PACKET_LEN)
-        {
-            if (sigusr1)
+            if (wrote < 0)
+            {
+                logError("Error uccured when sending packets(%s)!", 
+                    strerror(errno));
+                break;
+            }
+            else if (sigusr1)
             {
                 int pid;
                 logMessage("Long test terminated.");
@@ -164,15 +164,16 @@ void doFixTest(int connfd)
     {
         int thislen = len > PACKET_LEN ? PACKET_LEN : len;
         int wrote = rio_writenr(connfd, packetBuf, thislen);
-        if (wrote < 0)
+        
+        if (wrote < thislen)
         {
-            logError("Error uccured when sending packets(%s)!", 
-                strerror(errno));
-            break;
-        }
-        else if (wrote < thislen)
-        {
-            if (sigusr1)
+            if (wrote < 0)
+            {
+                logError("Error uccured when sending packets(%s)!", 
+                    strerror(errno));
+                break;
+            }
+            else if (sigusr1)
             {
                 int pid;
                 logMessage("Long test terminated.");
@@ -275,6 +276,6 @@ int main(int argc, char **argv)
             logWarning("Error when closing connection(%s).", 
                 strerror(errno));
         }
-        logMessage("Connection with %s closed.", haddrp);
+        logMessage("Connection with %s closed.\n", haddrp);
     }
 }

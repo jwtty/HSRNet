@@ -175,7 +175,7 @@ int main(int argc, char **argv)
             logWarning("Error when closing connection(%s).", 
                 strerror(errno));
         }
-        logMessage("Connection with %s closed.", haddrp);
+        logMessage("Connection with %s closed.\n", haddrp);
     }
 
     return 0;

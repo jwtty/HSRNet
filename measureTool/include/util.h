@@ -24,7 +24,7 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
-#define VERSION "1.0.0015"
+#define VERSION "1.0.0019"
 
 int netdial(int domain, int proto, char *local, int local_port, 
     char *server, int port);
@@ -38,7 +38,7 @@ int getMessage(int index, char *dest);
 
 char *retstr(char ret, char *buf);
 
-typedef int lock_t;
+typedef volatile int lock_t;
 static inline void init_lock(lock_t *plock)
 {
     *plock = 0;
@@ -77,6 +77,7 @@ static inline char rPeekPID(int index, const char *name, int *dest)
         return RET_EPID;
     }
     *dest = pid;
+    logVerbose("PID of %s is %d.", name, pid);
     return RET_SUCC;
 }
 
@@ -87,6 +88,7 @@ static inline char rKill(int pid, const char *name, int sig)
         logError("Can't send signal to %s(%d)!", name, pid);
         return RET_EKILL;
     }
+    logVerbose("Signal %d sent to %s(%d).", sig, name, pid);
     return RET_SUCC;
 }
 
@@ -94,7 +96,9 @@ static inline int rSendMessage(int connfd, const char *name,
     char *message, int len)
 {
     static char buf[2048];
-    *(int*)buf = len;
+    // use this to make gcc happy...
+    static int *ibuf = (int*)buf;
+    *ibuf = len;
     memcpy(buf + sizeof(int), message, len);
     if (rio_writen(connfd, buf, len + sizeof(int)) < 0)
     {
