@@ -1,0 +1,53 @@
+events:
+
+0. assumptions
+    once initiallized, controller is promised to be always running and online.
+        (but server can be in any state)
+    signals can always be delivered.
+
+1. force a job to end
+    client opens a TCP flow with the controller.
+    client calls the controller to end a job. message format:
+        |pos   |+0      | 
+        |------|--------|
+        |value |SIG_TERM|
+    controller reads 
+    controller sends SIGUSR1 to server.
+        if fails to send, 
+    if a job is running, server terminates the job, otherwise it ignores it.
+    server sends SIGUSR1 to controller.
+    controller call the client to notify it. message format:
+        |pos   |+0      | 
+        |------|--------|
+        |value |RET_SUCC|
+    controller closes the flow.
+
+2. reconfigure the server
+    client opens a TCP flow with the controller.
+    client calls the controller to reconfigure the server. message format: 
+        |pos   |+0      |+1                |+2~+5        |
+        |------|--------|------------------|-------------|
+        |value |SIG_CONF|TYPE_LONG/TYPE_FIX|int, len/size|
+    controller writes the message to shared memory area.
+    controller sends SIGUSR2 to server.
+    server reads the message from shared memory area.
+    server tries to reconfigure itself.
+        on success:
+            server sends SIGUSR1 to controller.
+            controller calls the client to notify it. message format:
+                |pos   |+0      | 
+                |------|--------|
+                |value |RET_SUCC|
+        on failure:
+            server writes the cause to shared memory area.
+            server sends SIGUSR2 to controller.
+            controller calls the client to notify it. message format:
+                |pos   |+0      |+1~+4   |+5~+(4+len)    |  
+                |------|--------|--------|---------------|
+                |value |RET_EMSG|int, len|string, message|
+    controller closes the flow.
+
+3. start a measurement job
+    client opens a TCP flow with the server.
+    server sends data as configured (default config is send 1K bytes).
+    server closes the flow.

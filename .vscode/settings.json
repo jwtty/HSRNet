@@ -1,0 +1,18 @@
+{
+    "files.associations": {
+        "csapp.c": "cpp",
+        "log.h": "c",
+        "unistd.h": "c",
+        "util.h": "c",
+        "defines.h": "c",
+        "csapp.h": "c",
+        "string.h": "c",
+        "sharing.c": "cpp",
+        "signum.h": "c",
+        "libio.h": "c",
+        "errno.h": "c",
+        "stdio.h": "c",
+        "fcntl.h": "c",
+        "fcntl2.h": "c"
+    }
+}

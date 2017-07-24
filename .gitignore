@@ -1,2 +1,3 @@
 # Do not trace data
 /data/*
+/measureTool/ref/*
