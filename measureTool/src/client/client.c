@@ -7,6 +7,11 @@ static char usage[] =
     "  -c [server ip]:\n"
     "    Specify the source ip address.\n"
     "    *: Required\n"
+    "  -l [path]:\n"
+    "    Specify the file to save the log.\n"
+    "  -n [size]:\n"
+    "    Tell the program to do fix test whose size is [size] bytes.\n"
+    "    (if the -n flag is specified, the program will perform a fix test)\n"
     "  -p [port]:\n"
     "    Specify port number of server.\n"
     "    *: Required\n"
@@ -16,11 +21,10 @@ static char usage[] =
     "    Tell the program to do long test whose length is [time] seconds,\n"
     "    or set the timeout threshold of fix test if -n is specified.\n"
     "    *: Required\n"
-    "  -n [size]:\n"
-    "    Tell the program to do fix test whose size is [size] bytes.\n"
-    "    (if the -n flag is specified, the program will perform a fix test)\n"
-    "  -l [path]:\n"
-    "    Specify the file to save the log.";
+    "  -v:\n"
+    "    Print version information and exit.\n"
+    "  -V:\n"
+    "    Print verbose log.";
 
 static char *localIP = NULL;
 static char *serverIP = NULL;
@@ -38,14 +42,20 @@ static char recvBuf[67108864];
 static void printUsageAndExit(char **argv)
 {
     printf("Usage: %s [options]\n%s\n", argv[0], usage);
-    exit(1);
+    exit(0);
+}
+
+static void printVersionAndExit()
+{
+    printf("Current version: %s\n", VERSION);
+    exit(0);
 }
 
 static void parseArguments(int argc, char **argv)
 {
     int os;
     char c;
-    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:")) != EOF)
+    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:vV")) != EOF)
     {
         switch (c)
         {
@@ -69,6 +79,12 @@ static void parseArguments(int argc, char **argv)
             break;
         case 'l':
             path = optarg;
+            break;
+        case 'v':
+            printVersionAndExit();
+            break;
+        case 'V':
+            verboseOn();
             break;
         default:
             logWarning("Unexpected command-line option!");
@@ -221,9 +237,10 @@ static void doReceive()
 
 static void dumpResult()
 {
-    logMessage("Test result:");
+    logMessage("Test summary:");
     logMessage("  Total time: %lfs", timeElapsed);
     logMessage("  Bytes received: %ld", byteReceived);
+    logMessage("  Bandwidth: %lfBytes/sec", byteReceived / timeElapsed);
 }
 
 int main(int argc, char **argv)

@@ -24,6 +24,8 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
+#define VERSION "1.0.0015"
+
 int netdial(int domain, int proto, char *local, int local_port, 
     char *server, int port);
 

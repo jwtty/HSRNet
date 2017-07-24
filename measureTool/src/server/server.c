@@ -142,6 +142,7 @@ void doLongTest(int connfd)
     logMessage("Long test summary:");
     logMessage("  Bytes transferred: %ld", sum);
     logMessage("  Time elapsed : %lfs", elapsed);
+    logMessage("  Bandwidth: %lfBytes/sec", sum / elapsed);
 }
 
 void doFixTest(int connfd)
@@ -202,6 +203,7 @@ void doFixTest(int connfd)
     logMessage("Fix test summary:");
     logMessage("  Bytes to transfer: %d", targ);
     logMessage("  Bytes transferred: %d", targ - len);
+    logMessage("  Bandwidth: %lfBytes/sec", (targ - len) / elapsed);
     logMessage("  Time elapsed : %lfs", elapsed);
 }
 
@@ -265,7 +267,7 @@ int main(int argc, char **argv)
         }
 
         haddrp = inet_ntoa(clientaddr.sin_addr);
-        logMessage("Connected to %s\n", haddrp);
+        logMessage("Connected to %s", haddrp);
 
         parse(connfd);
         if (close(connfd) < 0)

@@ -1,6 +1,6 @@
 #include "log.h"
 
-int verbose = 1;
+int verbose = 0;
 
 void verboseOn()
 {

@@ -1,6 +1,6 @@
 {
     "files.associations": {
-        "csapp.c": "cpp",
+        "csapp.c": "c",
         "log.h": "c",
         "unistd.h": "c",
         "util.h": "c",
@@ -15,6 +15,7 @@
         "fcntl.h": "c",
         "fcntl2.h": "c",
         "iperf.h": "c",
-        "tcp.h": "c"
+        "tcp.h": "c",
+        "time.h": "c"
     }
 }
