@@ -3,7 +3,6 @@
 static lock_t sigusr1;
 static lock_t sigusr2;
 static lock_t sigalrm;
-static sigset_t mask, backup;
 
 static char type = TYPE_FIX;
 static int arg = 1024;
@@ -12,9 +11,8 @@ static char packetBuf[PACKET_LEN];
 
 static int running = 0;
 
-void sigHandler1(int sig)
+void sigusr1Handler(int sig)
 {
-    sigprocmask(SIG_BLOCK, &mask, &backup);
     sigusr1 = 1;
     logMessage("Trying to terminate running job.");
 
@@ -30,27 +28,26 @@ void sigHandler1(int sig)
     }
 
     logMessage("Terminate complete.");
-    sigprocmask(SIG_SETMASK, &backup, NULL);
 }
 
-void sigHandler2(int sig)
+void sigusr2Handler(int sig)
 {
     static char message[256];
     int targ, ttype, targ2;
     int pid = -1;
-    sigprocmask(SIG_BLOCK, &mask, &backup);
+    int sigret = 0;
     
     sigusr2 = 1;
     logMessage("Trying to reconfigure server.");
     if (getMessage(SMEM_MESSAGE, message) < 0)
     {
         logError("Can't receive arguments: shared memory not initialized.");
-        goto sighandler2_fail_out;
+        goto sigusr2Handler_fail_out;
     }
 
     if (rPeekPID(SMEM_CONTROLLERPID, "controller", &pid) != RET_SUCC)
     {
-        goto sighandler2_final;
+        goto sigusr2Handler_final;
     }
 
     sscanf(message, "%d%d%d", &ttype, &targ, &targ2);
@@ -71,23 +68,24 @@ void sigHandler2(int sig)
         sprintf(message, "Unrecognized type %d", ttype);
         logWarning("%s", message);
         setMessage(SMEM_MESSAGE, message);
-        goto sighandler2_fail_out;
+        goto sigusr2Handler_fail_out;
     }
 
-    goto sighandler2_out;
+    goto sigusr2Handler_out;
 
-sighandler2_fail_out:
-    rKill(pid, "controller", SIGUSR2);
-    goto sighandler2_final;
-sighandler2_out:
-    rKill(pid, "controller", SIGUSR1);
-sighandler2_final:
-    sigprocmask(SIG_SETMASK, &backup, NULL);
+sigusr2Handler_fail_out:
+    sigret = SIGUSR2;
+    goto sigusr2Handler_final;
+sigusr2Handler_out:
+    sigret = SIGUSR1;
+sigusr2Handler_final:
+    rKill(pid, "controller", sigret);
 }
 
-void sigHandler3(int sig)
+void sigalrmHandler(int sig)
 {
     sigalrm = 1;
+    logVerbose("Alarm!");
 }
 
 void doLongTest(int connfd)
@@ -109,7 +107,7 @@ void doLongTest(int connfd)
         {
             if (wrote < 0)
             {
-                logError("Error uccured when sending packets(%s)!", 
+                logError("Error occured when sending packets(%s)!", 
                     strerror(errno));
                 break;
             }
@@ -169,7 +167,7 @@ void doFixTest(int connfd)
         {
             if (wrote < 0)
             {
-                logError("Error uccured when sending packets(%s)!", 
+                logError("Error occured when sending packets(%s)!", 
                     strerror(errno));
                 break;
             }
@@ -234,8 +232,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s [port]\n", argv[0]);
         exit(1);
     }
-    
-    sigfillset(&mask);
+
+    SignalNoRestart(SIGALRM, sigalrmHandler);
+    SignalNoRestart(SIGUSR1, sigusr1Handler);
+    SignalNoRestart(SIGUSR2, sigusr2Handler);
+    SignalNoRestart(SIGPIPE, SIG_IGN);
     
     initSharedMem(SMEM_MESSAGE);
     initSharedMem(SMEM_CONTROLLERPID);
@@ -245,11 +246,6 @@ int main(int argc, char **argv)
     port = atoi(argv[1]);
     listenfd = Open_listenfd(port);
     logMessage("Listening on port %d.", port);
-
-    Signal(SIGUSR1, sigHandler1);
-    Signal(SIGUSR2, sigHandler2);
-    Signal(SIGALRM, sigHandler3);
-    Signal(SIGPIPE, SIG_IGN);
 
     while (1)
     {

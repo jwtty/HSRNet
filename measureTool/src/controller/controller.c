@@ -145,9 +145,9 @@ int main(int argc, char **argv)
     listenfd = Open_listenfd(port);
     logMessage("Listening on port %d.", port);
 
-    Signal(SIGUSR1, sigHandler1);
-    Signal(SIGUSR2, sigHandler2);
-    Signal(SIGPIPE, SIG_IGN);
+    SignalNoRestart(SIGUSR1, sigHandler1);
+    SignalNoRestart(SIGUSR2, sigHandler2);
+    SignalNoRestart(SIGPIPE, SIG_IGN);
 
     // initialize complete, start main loop
     while (1) 

@@ -1,4 +1,5 @@
 #!/bin/bash
 
-./bin/server 2000 > temp/server.log
-./bin/controller 2002 > temp/controller.log
+let cport=$1+2
+./bin/server $1 2> temp/server.log &
+./bin/controller $cport 2> temp/controller.log &

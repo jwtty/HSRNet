@@ -1,7 +1,7 @@
 TARGET := ../bin
 CC := gcc
 MACRO :=
-CFLAGS := $(MACRO) -O1 -Wall -I ../include
+CFLAGS := $(MACRO) -O2 -Wall -I ../include
 PROGS := controller server client
 OUT := csapp.o util.o log.o
 LIB := -lpthread

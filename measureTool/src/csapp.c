@@ -585,6 +585,7 @@ ssize_t rio_readnr(int fd, void *usrbuf, size_t n)
 
     while (nleft > 0) {
         if ((nread = read(fd, bufp, nleft)) < 0) {
+            logVerbose("Read interrupted.");
             if (errno == EINTR) /* interrupted by sig handler return */
                 return (n - nleft);
             else
@@ -595,6 +596,7 @@ ssize_t rio_readnr(int fd, void *usrbuf, size_t n)
         nleft -= nread;
         bufp += nread;
     }
+    logVerbose("Got %ld bytes.", n - nleft);
     return (n - nleft);         /* return >= 0 */
 }
 /* $end rio_readnr */
@@ -611,6 +613,7 @@ ssize_t rio_writenr(int fd, void *usrbuf, size_t n)
 
     while (nleft > 0) {
         if ((nwritten = write(fd, bufp, nleft)) <= 0) {
+            logVerbose("Write interrupted.");
             if (errno == EINTR)  /* interrupted by sig handler return */
                 return (n - nleft);
             else
@@ -619,6 +622,7 @@ ssize_t rio_writenr(int fd, void *usrbuf, size_t n)
         nleft -= nwritten;
         bufp += nwritten;
     }
+    logVerbose("Sent %ld bytes.", n - nleft);
     return n;
 }
 /* $end rio_writenr */

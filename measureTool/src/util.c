@@ -4,6 +4,19 @@ static char *smem[16];
 static int smem_fd[16];
 static char fbuf[SHARED_BLOCK_LEN];
 
+handler_t *SignalNoRestart(int signum, handler_t *handler) 
+{
+    struct sigaction action, old_action;
+
+    action.sa_handler = handler;  
+    sigfillset(&action.sa_mask); // block all signal here
+    action.sa_flags = 0;
+
+    if (sigaction(signum, &action, &old_action) < 0)
+        unix_error("Signal error");
+    return (old_action.sa_handler);
+}
+
 void initSharedMem(int index)
 {
     struct stat stat;

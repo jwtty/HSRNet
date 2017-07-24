@@ -24,7 +24,7 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
-#define VERSION "1.0.0019"
+#define VERSION "1.0.0027"
 
 int netdial(int domain, int proto, char *local, int local_port, 
     char *server, int port);
@@ -37,6 +37,8 @@ void setMessage(int index, char *message);
 int getMessage(int index, char *dest);
 
 char *retstr(char ret, char *buf);
+
+handler_t *SignalNoRestart(int signum, handler_t handler);
 
 typedef volatile int lock_t;
 static inline void init_lock(lock_t *plock)

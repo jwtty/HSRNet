@@ -44,6 +44,7 @@ static int mss = 0;
 static char recvBuf[67108864];
 static lock_t sigint = 0;
 static lock_t sigalrm = 0;
+static struct timeval st, ed;
 
 static void printUsageAndExit(char **argv)
 {
@@ -215,11 +216,21 @@ static void connectToServer()
     logMessage("Connection established, mss is %d.", mss);
 }
 
+static void dumpResult()
+{
+    timeElapsed = 
+        (ed.tv_sec - st.tv_sec) + (ed.tv_usec - st.tv_usec) / 1000000.0;
+    logMessage("Test summary:");
+    logMessage("  Total time: %lfs", timeElapsed);
+    logMessage("  Bytes received: %ld", byteReceived);
+    logMessage("  Bandwidth: %lfBytes/sec", byteReceived / timeElapsed);
+}
+
 static void doReceive()
 {
     int ret;
-    struct timeval st, ed;
 
+    logVerbose("Timeout threshold is %d", localTime);
     alarm(localTime);
     gettimeofday(&st, NULL);
     do
@@ -237,13 +248,13 @@ static void doReceive()
                     logError("Unexpected read error(%s)!", strerror(errno));
                 }
             }
-            else
+            else if (errno == EINTR)
             {
-                if (sigint == 1)
+                if (sigint)
                 {
                     logMessage("Ctrl+C received, terminate.");
                 }
-                else if (sigalrm == 1)
+                else if (sigalrm)
                 {
                     logMessage("Test timeout, terminate.");
                 }
@@ -259,18 +270,11 @@ static void doReceive()
     while (!sigint && !sigalrm);
 
     gettimeofday(&ed, NULL);
-
-    timeElapsed = 
-        (ed.tv_sec - st.tv_sec) + (ed.tv_usec - st.tv_usec) / 1000000.0;
+    alarm(0);
+    
+    dumpResult();
+    logVerbose("SIGINT: %d, SIGALRM: %d", sigint, sigalrm);
     logMessage("Transfer complete.");
-}
-
-static void dumpResult()
-{
-    logMessage("Test summary:");
-    logMessage("  Total time: %lfs", timeElapsed);
-    logMessage("  Bytes received: %ld", byteReceived);
-    logMessage("  Bandwidth: %lfBytes/sec", byteReceived / timeElapsed);
 }
 
 void sigintHandler(int sig)
@@ -281,6 +285,7 @@ void sigintHandler(int sig)
 void sigalrmHandler(int sig)
 {
     sigalrm = 1;
+    logVerbose("Alarm!");
     alarm(1);
 }
 
@@ -291,9 +296,9 @@ int main(int argc, char **argv)
         printUsageAndExit(argv);
     }
 
-    Signal(SIGPIPE, SIG_IGN);
-    Signal(SIGINT, sigintHandler);
-    Signal(SIGALRM, sigalrmHandler);
+    SignalNoRestart(SIGINT, sigintHandler);
+    SignalNoRestart(SIGALRM, sigalrmHandler);
+    SignalNoRestart(SIGPIPE, SIG_IGN);
 
     parseArguments(argc, argv);
 
