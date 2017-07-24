@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ $# -eq 0 ]; then
+	echo "Usage: $0 [portNumberForServer]"
+	exit
+fi
+
 let cport=$1+2
-./bin/server $1 2> temp/server.log &
-./bin/controller $cport 2> temp/controller.log &
+./bin/server -p $1 -V -l temp/server.log &
+./bin/controller -p $cport -V -l temp/controller.log &

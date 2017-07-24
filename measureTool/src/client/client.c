@@ -1,12 +1,14 @@
 #include "util.h"
 
-static char usage[] = 
+char *usage = 
     "  -B [local ip]:\n"
     "    Specify the target ip address.\n"
     "    *: Required\n"
     "  -c [server ip]:\n"
     "    Specify the source ip address.\n"
     "    *: Required\n"
+    "  -h:\n"
+    "    Print this message and exit.\n"
     "  -l [path]:\n"
     "    Specify the file to save the log.\n"
     "  -n [size]:\n"
@@ -46,23 +48,10 @@ static lock_t sigint = 0;
 static lock_t sigalrm = 0;
 static struct timeval st, ed;
 
-static void printUsageAndExit(char **argv)
-{
-    printf("Usage: %s [options]\n%s\n", argv[0], usage);
-    exit(0);
-}
-
-static void printVersionAndExit()
-{
-    printf("Current version: %s\n", VERSION);
-    exit(0);
-}
-
 static void parseArguments(int argc, char **argv)
 {
-    int os;
     char c;
-    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:vVT:")) != EOF)
+    while ((c = getopt(argc, argv, "B:c:p:t:n:l:P:vVT:h")) != EOF)
     {
         switch (c)
         {
@@ -71,6 +60,15 @@ static void parseArguments(int argc, char **argv)
             break;
         case 'c':
             serverIP = optarg;
+            break;
+        case 'h':
+            printUsageAndExit(argv);
+            break;
+        case 'l':
+            path = optarg;
+            break;
+        case 'n':
+            size = atoi(optarg);
             break;
         case 'p':
             port = atoi(optarg);
@@ -84,14 +82,8 @@ static void parseArguments(int argc, char **argv)
         case 'T':
             localTime = atoi(optarg);
             break;
-        case 'n':
-            size = atoi(optarg);
-            break;
-        case 'l':
-            path = optarg;
-            break;
         case 'v':
-            printVersionAndExit();
+            printUsageAndExit(argv);
             break;
         case 'V':
             verboseOn();
@@ -129,14 +121,7 @@ static void parseArguments(int argc, char **argv)
     }
     if (path != NULL)
     {
-        if ((os = open(path, O_APPEND | O_WRONLY | O_CREAT, 0666) < 0))
-        {
-            logFatal("Can't open log file %s.", path);
-        }
-        else
-        {
-            dup2(os, 2);
-        }
+        redirectLogTo(path);
     }
 }
 
@@ -248,20 +233,24 @@ static void doReceive()
                     logError("Unexpected read error(%s)!", strerror(errno));
                 }
             }
-            else if (errno == EINTR)
+            else
             {
-                if (sigint)
+                if (errno == EINTR)
                 {
-                    logMessage("Ctrl+C received, terminate.");
+                    if (sigint)
+                    {
+                        logMessage("Ctrl+C received, terminate.");
+                    }
+                    else if (sigalrm)
+                    {
+                        logMessage("Test timeout, terminate.");
+                    }
+                    else
+                    {
+                        logError("Interrupted by unexpected signal!");
+                    }
                 }
-                else if (sigalrm)
-                {
-                    logMessage("Test timeout, terminate.");
-                }
-                else
-                {
-                    logError("Interrupted by unexpected signal!");
-                }
+                byteReceived += ret;
             }
             break;
         }
@@ -296,18 +285,19 @@ int main(int argc, char **argv)
         printUsageAndExit(argv);
     }
 
+    initTimestamp();
+
     SignalNoRestart(SIGINT, sigintHandler);
     SignalNoRestart(SIGALRM, sigalrmHandler);
     SignalNoRestart(SIGPIPE, SIG_IGN);
 
     parseArguments(argc, argv);
+    printInitTimestamp();
 
     reconfigureServer();
 
     connectToServer();
     doReceive();
-    
-    dumpResult();
 
     return 0;
 }

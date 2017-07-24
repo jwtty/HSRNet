@@ -24,7 +24,20 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
-#define VERSION "1.0.0027"
+#define VERSION "1.0.0037"
+
+extern char *usage;
+static inline void printUsageAndExit(char **argv)
+{
+    fprintf(stderr, "Usage: %s [options]\n%s\n", argv[0], usage);
+    exit(0);
+}
+
+static inline void printVersionAndExit()
+{
+    fprintf(stderr, "Current version: %s\n", VERSION);
+    exit(0);
+}
 
 int netdial(int domain, int proto, char *local, int local_port, 
     char *server, int port);

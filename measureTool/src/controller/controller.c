@@ -1,5 +1,24 @@
 #include "util.h"
 
+char *usage = 
+    "  -h:\n"
+    "    Print this message and exit.\n"
+    "  -l [path]:\n"
+    "    Specify the file to save the log.\n"
+    "  -p [port]:\n"
+    "    Specify port number of server.\n"
+    "    *: Required\n"
+    "  -v:\n"
+    "    Print version information and exit.\n"
+    "  -V:\n"
+    "    Print verbose log.";
+
+static lock_t sigusr1;
+static lock_t sigusr2;
+
+static int port;
+static char *path;
+
 static inline void rSendRetval(int connfd, char *ret)
 {
     if (rio_writen(connfd, ret, 1) < 0)
@@ -7,9 +26,6 @@ static inline void rSendRetval(int connfd, char *ret)
         logError("Can't send return value to client(%s)!", strerror(errno));
     }
 }
-
-static lock_t sigusr1;
-static lock_t sigusr2;
 
 void sigHandler1(int sig)
 {
@@ -127,27 +143,67 @@ static void parse(int connfd)
     }
 }
 
+static void parseArguments(int argc, char **argv)
+{
+    char c;
+    while ((c = getopt(argc, argv, "p:vVl:h")) != EOF)
+    {
+        switch (c)
+        {
+        case 'h':
+            printUsageAndExit(argv);
+            break;
+        case 'p':
+            port = atoi(optarg);
+            break;
+        case 'l':
+            path = optarg;
+            break;
+        case 'v':
+            printVersionAndExit();
+            break;
+        case 'V':
+            verboseOn();
+            break;
+        default:
+            logWarning("Unexpected command-line option!");
+            printUsageAndExit(argv);
+        }
+    }
+
+    if (port == 0)
+    {
+        logFatal("No legal port number specified.\n");
+    }
+    if (path != NULL)
+    {
+        redirectLogTo(path);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    int listenfd, port;
-    if (argc != 2)
+    int listenfd;
+    if (argc == 1)
     {
-        fprintf(stderr, "Usage: %s [port]\n", argv[0]);
-        exit(1);
+        printUsageAndExit(argv);
     }
+
+    initTimestamp();
+    parseArguments(argc, argv);
+    printInitTimestamp();
+
+    SignalNoRestart(SIGUSR1, sigHandler1);
+    SignalNoRestart(SIGUSR2, sigHandler2);
+    SignalNoRestart(SIGPIPE, SIG_IGN);
 
     initSharedMem(SMEM_MESSAGE);
     initSharedMem(SMEM_CONTROLLERPID);
     initSharedMem(SMEM_SERVERPID);
     notifyPID(SMEM_CONTROLLERPID, getpid());
 
-    port = atoi(argv[1]);
     listenfd = Open_listenfd(port);
     logMessage("Listening on port %d.", port);
-
-    SignalNoRestart(SIGUSR1, sigHandler1);
-    SignalNoRestart(SIGUSR2, sigHandler2);
-    SignalNoRestart(SIGPIPE, SIG_IGN);
 
     // initialize complete, start main loop
     while (1) 

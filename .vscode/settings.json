@@ -17,6 +17,7 @@
         "iperf.h": "c",
         "tcp.h": "c",
         "time.h": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "getopt.h": "c"
     }
 }

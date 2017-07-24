@@ -1,5 +1,18 @@
 #include "util.h"
 
+char *usage = 
+    "  -h:\n"
+    "    Print this message and exit.\n"
+    "  -l [path]:\n"
+    "    Specify the file to save the log.\n"
+    "  -p [port]:\n"
+    "    Specify port number of server.\n"
+    "    *: Required\n"
+    "  -v:\n"
+    "    Print version information and exit.\n"
+    "  -V:\n"
+    "    Print verbose log.";
+
 static lock_t sigusr1;
 static lock_t sigusr2;
 static lock_t sigalrm;
@@ -10,6 +23,9 @@ static int arg2 = 200;
 static char packetBuf[PACKET_LEN];
 
 static int running = 0;
+
+static int port;
+static char *path;
 
 void sigusr1Handler(int sig)
 {
@@ -197,6 +213,7 @@ void doFixTest(int connfd)
     }
 
     gettimeofday(&ed, NULL);
+    alarm(0);
     elapsed = (ed.tv_sec - st.tv_sec) + (ed.tv_usec - st.tv_usec) / 1000000.0;
 
     logMessage("Fix test summary:");
@@ -224,26 +241,66 @@ void parse(int connfd)
     running = 0;
 }
 
+static void parseArguments(int argc, char **argv)
+{
+    char c;
+    while ((c = getopt(argc, argv, "p:vVl:h")) != EOF)
+    {
+        switch (c)
+        {
+        case 'h':
+            printUsageAndExit(argv);
+            break;
+        case 'p':
+            port = atoi(optarg);
+            break;
+        case 'l':
+            path = optarg;
+            break;
+        case 'v':
+            printVersionAndExit();
+            break;
+        case 'V':
+            verboseOn();
+            break;
+        default:
+            logWarning("Unexpected command-line option!");
+            printUsageAndExit(argv);
+        }
+    }
+
+    if (port == 0)
+    {
+        logFatal("No legal port number specified.\n");
+    }
+    if (path != NULL)
+    {
+        redirectLogTo(path);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    int listenfd, port;
-    if (argc != 2)
+    int listenfd;
+    if (argc == 1)
     {
-        fprintf(stderr, "Usage: %s [port]\n", argv[0]);
-        exit(1);
+        printUsageAndExit(argv);
     }
+
+    initTimestamp();
+    parseArguments(argc, argv);
+    printInitTimestamp();
 
     SignalNoRestart(SIGALRM, sigalrmHandler);
     SignalNoRestart(SIGUSR1, sigusr1Handler);
     SignalNoRestart(SIGUSR2, sigusr2Handler);
     SignalNoRestart(SIGPIPE, SIG_IGN);
-    
+
     initSharedMem(SMEM_MESSAGE);
     initSharedMem(SMEM_CONTROLLERPID);
     initSharedMem(SMEM_SERVERPID);
     notifyPID(SMEM_SERVERPID, getpid());
 
-    port = atoi(argv[1]);
     listenfd = Open_listenfd(port);
     logMessage("Listening on port %d.", port);
 
@@ -274,4 +331,6 @@ int main(int argc, char **argv)
         }
         logMessage("Connection with %s closed.\n", haddrp);
     }
+
+    return 0;
 }
