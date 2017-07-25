@@ -81,7 +81,7 @@ static void parseArguments(int argc, char **argv)
             localTime = atoi(optarg);
             break;
         case 'v':
-            printUsageAndExit(argv);
+            printVersionAndExit("mperf-client");
             break;
         case 'V':
             verboseOn();

@@ -160,7 +160,7 @@ static void parseArguments(int argc, char **argv)
             path = optarg;
             break;
         case 'v':
-            printVersionAndExit();
+            printVersionAndExit("mperf-controller");
             break;
         case 'V':
             verboseOn();

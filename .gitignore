@@ -1,7 +1,8 @@
 # Do not trace data
 /data/*
-/measureTool/ref/*
-/measureTool/bin/*
-/measureTool/temp/*
+/mperf/ref/*
+/mperf/bin/*
+/mperf/temp/*
+/mperf/test/*
 *.o
 *~

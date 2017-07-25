@@ -258,7 +258,7 @@ static void parseArguments(int argc, char **argv)
             path = optarg;
             break;
         case 'v':
-            printVersionAndExit();
+            printVersionAndExit("mperf-server");
             break;
         case 'V':
             verboseOn();

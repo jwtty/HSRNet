@@ -24,7 +24,7 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
-#define VERSION "1.0.0038"
+#define VERSION "1.0.0039 Beta"
 
 extern char *usage;
 static inline void printUsageAndExit(char **argv)
@@ -33,9 +33,9 @@ static inline void printUsageAndExit(char **argv)
     exit(0);
 }
 
-static inline void printVersionAndExit()
+static inline void printVersionAndExit(char *name)
 {
-    fprintf(stderr, "Current version: %s\n", VERSION);
+    fprintf(stderr, "%s %s\n", name, VERSION);
     exit(0);
 }
 
