@@ -24,7 +24,7 @@
 #define TYPE_LONG 0
 #define TYPE_FIX 1
 
-#define VERSION "1.0.0037"
+#define VERSION "1.0.0038"
 
 extern char *usage;
 static inline void printUsageAndExit(char **argv)

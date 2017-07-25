@@ -12,20 +12,18 @@ char *usage =
     "  -l [path]:\n"
     "    Specify the file to save the log.\n"
     "  -n [size]:\n"
-    "    Tell the program to do fix test whose size is [size] bytes.\n"
-    "    (if the -n flag is specified, the program will perform a fix test)\n"
+    "    Tell the program to do fix test with size=[size]Bytes.\n"
     "  -p [port]:\n"
     "    Specify port number of server.\n"
     "    *: Required\n"
     "  -P [cport]:\n"
     "    Specify port number of controller(default value is [port] + 2).\n"
     "  -t [time]:\n"
-    "    Tell the program to do long test whose length is [time] seconds,\n"
-    "    or set the timeout threshold of fix test if -n is specified.\n"
-    "    *: Required\n"
+    "    Tell the program to do long test with timeLength=[time]seconds.\n"
     "  -T [Time]:\n"
-    "    End test and exit after [Time] seconds, this value shouldn't be\n"
-    "    less than [time](default value is [value] + 10)."
+    "    End test and exit after [Time] seconds.\n"
+    "      for long tests, default value is [time] + 10.\n"
+    "      for fix tests, default value is 200.\n"
     "  -v:\n"
     "    Print version information and exit.\n"
     "  -V:\n"
@@ -100,24 +98,31 @@ static void parseArguments(int argc, char **argv)
     }
     if (localTime < 0)
     {
-        localTime = timelen + 10;
+        if (size > 0)
+        {
+            localTime = 200;
+        }
+        else
+        {
+            localTime = timelen + 10;
+        }
     }
 
     if (localIP == NULL)
     {
-        logFatal("No local IP specified.\n");
+        logFatal("No local IP specified.");
     }
     if (serverIP == NULL)
     {
-        logFatal("No server IP specified.\n");
+        logFatal("No server IP specified.");
     }
     if (port == 0)
     {
-        logFatal("No legal port number specified.\n");
+        logFatal("No legal port number specified.");
     }
-    if (timelen < 0)
+    if (timelen < 0 && size < 0)
     {
-        logFatal("No legal -t argument specified.");
+        logFatal("No legal -t or -n argument specified.");
     }
     if (path != NULL)
     {
@@ -144,7 +149,7 @@ static void reconfigureServer()
 {
     static char message[1024];
     int type = size > 0 ? TYPE_FIX : TYPE_LONG;
-    int arg = timelen;
+    int arg = size > 0 ? localTime + 10 : timelen;
     int arg2 = size;
     char ret;
 
@@ -243,7 +248,8 @@ static void doReceive()
                     }
                     else if (sigalrm)
                     {
-                        logMessage("Test timeout, terminate.");
+                        logMessage("Test timeout after %d seconds, terminate.",
+                            localTime);
                     }
                     else
                     {
